@@ -7,16 +7,19 @@ const app_root = require('app-root-path');
 const tracer = require('tracer');
 const process = require('process');
 
+const pmId = process.env.pm_id ? process.env.pm_id : 0;
+const logFormat = '{{timestamp}} {{proc}} {{title}} {{file}}:{{line}} ({{method}}) {{message}}';
+const dateformat = 'yyyy-mm-dd HH:MM:ss.lo'; // "isoDateTime"
+
 // noinspection DuplicatedCode
 const logger = tracer.dailyfile({
     root: `${app_root}/logs`,
-    splitFormat: `yyyymmdd${process.env.pm_id ? ('.' + process.env.pm_id) : ''}`,
+    format: logFormat,
+    dateformat: dateformat,
     allLogsFileName: 'sql',
     preprocess: function(data) {
-        let pmId = process.env.pm_id;
-        if (!pmId) pmId = "";
-        else pmId += ":"
-        data.title = `${pmId}${process.pid}:${data.title.toUpperCase()}`;
+        data.title = data.title.toUpperCase();
+        data.proc = `${pmId}:${process.pid}`;
     },
     transport: function(data) {
         let isProd = process.env.NODE_ENV && process.env.NODE_ENV.toLocaleLowerCase().includes('prod')
@@ -26,8 +29,6 @@ const logger = tracer.dailyfile({
         }
         console.log(data.output);
     },
-    format: "{{timestamp}} <{{title}}> {{file}}:{{line}} ({{method}}) {{message}}",
-    dateformat: "isoDateTime",
     stackIndex: 1
 });
 
@@ -155,7 +156,7 @@ module.exports.prototype.insert = function (table) {
 
 module.exports.prototype.delete = function (table) {
     this._comm = "DELETE ";
-    this._from = "FROM " + bq(table);
+    if (table) this._from = "FROM " + bq(table);
     return this;
 };
 
